@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+import { supabase } from './config/database';
 
 dotenv.config();
 
@@ -12,16 +13,13 @@ const server = http.createServer(app);
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173', // ваш фронтенд
+  origin: 'http://localhost:5173',
   credentials: true
 }));
 app.use(express.json());
 
-// Supabase клиент
-export const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
-);
+// Экспортируем supabase для использования в других файлах
+export { supabase };
 
 // Socket.IO
 export const io = new Server(server, {
@@ -32,16 +30,12 @@ export const io = new Server(server, {
   }
 });
 
-// Базовый маршрут для проверки
+// Проверка работы сервера
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
-// Здесь будут ваши маршруты
-// app.use('/api/auth', authRoutes);
-// app.use('/api/quizzes', quizRoutes);
-
-// Socket обработчики (будем добавлять позже)
+// Socket обработчики
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
   
@@ -50,7 +44,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
