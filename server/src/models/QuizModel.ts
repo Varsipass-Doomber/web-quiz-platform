@@ -6,11 +6,15 @@ export interface Quiz {
   id: string;
   title: string;
   description?: string;
-  category?: string;
+  category?: string;            
+  category_id?: string;        
+  image_url?: string;           
   time_limit: number;
   organizer_id: string;
   room_code: string;
   is_active: boolean;
+  is_public: boolean;     
+  max_participants: number;    
   status: 'draft' | 'active' | 'finished';
   created_at: string;
   started_at?: string;
@@ -52,14 +56,14 @@ export class QuizModel extends BaseModel {
 
   // Создать квиз с автоматической генерацией кода
   async createQuiz(data: Omit<Quiz, 'id' | 'room_code' | 'created_at' | 'is_active' | 'status'>) {
-    const roomCode = await this.generateRoomCode();
-    return this.create({
-      ...data,
-      room_code: roomCode,
-      is_active: false,
-      status: 'draft'
-    });
-  }
+  const roomCode = await this.generateRoomCode();
+  return this.create({
+    ...data, // теперь data содержит is_public, max_participants, category_id, image_url
+    room_code: roomCode,
+    is_active: false,
+    status: 'draft'
+  });
+}
 
   // Найти квиз по коду комнаты
   async findByRoomCode(roomCode: string) {
@@ -76,7 +80,7 @@ export class QuizModel extends BaseModel {
   async getQuizWithQuestions(quizId: string) {
     const { data: quiz, error: quizError } = await supabase
       .from('quizzes')
-      .select('*')
+      .select('*, categories(name)') // <-- Добавлено
       .eq('id', quizId)
       .single();
     if (quizError) throw quizError;
@@ -89,6 +93,18 @@ export class QuizModel extends BaseModel {
     if (questionsError) throw questionsError;
 
     return { ...quiz, questions };
+  }
+
+  // Новый метод в QuizModel
+  async getQuizzesByCategory(categoryId: string) {
+    const { data, error } = await supabase
+      .from('quizzes')
+      .select('*, categories(name)')
+      .eq('category_id', categoryId)
+      .eq('is_public', true)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
   }
 
   // Запустить квиз

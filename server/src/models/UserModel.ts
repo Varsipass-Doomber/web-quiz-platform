@@ -3,6 +3,7 @@ import { supabase } from '../config/database';
 
 export interface User {
   id: string;
+  email: string;        
   full_name: string;
   role: 'organizer' | 'participant';
   avatar_url?: string;

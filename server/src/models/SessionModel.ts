@@ -5,6 +5,7 @@ export interface ActiveSession {
   id: string;
   quiz_id: string;
   user_id: string;
+  connection_id?: string;      
   joined_at: string;
   last_active: string;
   current_score: number;
@@ -17,10 +18,11 @@ export class SessionModel extends BaseModel {
   }
 
   // Добавить участника в комнату
-  async joinQuiz(quizId: string, userId: string) {
+  async joinQuiz(quizId: string, userId: string, connectionId?: string) {
     return this.create({
       quiz_id: quizId,
       user_id: userId,
+      connection_id: connectionId || null, // <-- Добавлено
       current_score: 0,
       answers: {}
     });
@@ -89,5 +91,9 @@ export class SessionModel extends BaseModel {
       .eq('quiz_id', quizId);
     if (error) throw error;
     return true;
+  }
+
+  async updateConnectionId(sessionId: string, connectionId: string) {
+    return this.update(sessionId, { connection_id: connectionId });
   }
 }

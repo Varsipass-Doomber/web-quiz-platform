@@ -9,6 +9,7 @@ export interface Result {
   score: number;
   correct_answers: number;
   wrong_answers: number;
+  total_questions: number;     // <-- Добавлено
   answers: Record<string, any>;
   time_spent?: number;
   completed_at: string;
@@ -33,9 +34,9 @@ export class ResultModel extends BaseModel {
       throw new Error('No active session found');
     }
 
-    // Получаем вопросы для подсчета правильных/неправильных ответов
     const questionModel = new QuestionModel();
     const questions = await questionModel.getQuestionsByQuiz(quizId);
+    const totalQuestions = questions.length; // <-- Добавлено
 
     let correct = 0;
     let wrong = 0;
@@ -55,11 +56,11 @@ export class ResultModel extends BaseModel {
       score: session.current_score,
       correct_answers: correct,
       wrong_answers: wrong,
+      total_questions: totalQuestions, // <-- Добавлено
       answers: session.answers,
       time_spent: Math.floor((Date.now() - new Date(session.joined_at).getTime()) / 1000)
     });
 
-    // Очищаем активную сессию
     await supabase
       .from('active_sessions')
       .delete()

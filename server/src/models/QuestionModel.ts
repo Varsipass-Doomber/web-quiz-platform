@@ -6,11 +6,14 @@ export interface Question {
   quiz_id: string;
   type: 'text' | 'image' | 'single' | 'multiple';
   content: string;
+  image_url?: string;          
   options?: any;
   correct_answer: any;
   points: number;
   order_number: number;
   time_limit?: number;
+  hint?: string;             
+  explanation?: string;        
   created_at: string;
 }
 
