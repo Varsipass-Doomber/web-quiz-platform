@@ -8,6 +8,9 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { HomePage } from './pages/HomePage';
 import { CreateQuizPage } from './pages/CreateQuizPage';
+import { LobbyPage } from './pages/LobbyPage';
+import { QuizSessionPage } from './pages/QuizSessionPage';
+
 
 function App() {
   // Используем useRef для хранения socket
@@ -52,6 +55,8 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/home" element={<HomePage />} />
         <Route path="/quiz/create" element={<CreateQuizPage />} />
+        <Route path="/quiz/lobby" element={<LobbyPage />} />
+        <Route path="/quiz/session/:quizId" element={<QuizSessionPage />} />
         {/* Добавим позже: 
         <Route path="/quiz/:id" element={<QuizSession />} />
         <Route path="/results/:id" element={<Results />} />
