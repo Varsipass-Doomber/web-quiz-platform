@@ -10,6 +10,7 @@ import { HomePage } from './pages/HomePage';
 import { CreateQuizPage } from './pages/CreateQuizPage';
 import { LobbyPage } from './pages/LobbyPage';
 import { QuizSessionPage } from './pages/QuizSessionPage';
+import { ProfilePage } from './pages/ProfilePage';
 
 
 function App() {
@@ -57,6 +58,7 @@ function App() {
         <Route path="/quiz/create" element={<CreateQuizPage />} />
         <Route path="/quiz/lobby" element={<LobbyPage />} />
         <Route path="/quiz/session/:quizId" element={<QuizSessionPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         {/* Добавим позже: 
         <Route path="/quiz/:id" element={<QuizSession />} />
         <Route path="/results/:id" element={<Results />} />

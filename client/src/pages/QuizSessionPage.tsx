@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   Zap,
@@ -131,7 +131,8 @@ function ParticipantStatus({ p }: { p: Participant }) {
 // ─── Main page ──────────────────────────────────────────────────────────────
 
 export function QuizSessionPage() {
-  useParams<{ quizId: string }>();
+  const { quizId } = useParams<{ quizId: string }>();
+  console.log("Quiz ID:", quizId); // Для отладки
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [questions] = useState<Question[]>(MOCK_QUESTIONS);
@@ -139,10 +140,14 @@ export function QuizSessionPage() {
   const [isAnswered, setIsAnswered] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
   const [isTimerActive, setIsTimerActive] = useState(true);
-  const [participants, setParticipants] = useState<Participant[]>(INITIAL_PARTICIPANTS);
+  const [participants] = useState<Participant[]>(INITIAL_PARTICIPANTS);
   const [myScore, setMyScore] = useState(0);
   const [showResults, setShowResults] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+
+  // Ссылки для таймеров
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const transitionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentQuestion = questions[currentQuestionIndex];
   const totalQuestions = questions.length;
@@ -151,9 +156,7 @@ export function QuizSessionPage() {
   // ── Handlers ──
   const handleSelectAnswer = (optionId: string) => {
     if (isAnswered) return;
-    // Разрешаем выбор даже если таймер истёк, но только для последнего вопроса?
-    // Лучше разрешить всегда, если пользователь не ответил.
-    if (currentQuestion.type === "single") {
+    if (currentQuestion.type === "single" || currentQuestion.type === "truefalse") {
       setSelectedAnswers([optionId]);
     } else if (currentQuestion.type === "multiple") {
       setSelectedAnswers((prev) =>
@@ -162,12 +165,16 @@ export function QuizSessionPage() {
     }
   };
 
-  const handleSubmitAnswer = (timeout = false) => {
+  const handleSubmit = (timedOut = false) => {
+    // Очищаем таймеры
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (transitionRef.current) clearTimeout(transitionRef.current);
+
     if (isAnswered) return;
     setIsAnswered(true);
     setIsTimerActive(false);
 
-    if (timeout) {
+    if (timedOut) {
       setIsCorrect(false);
       return;
     }
@@ -185,9 +192,24 @@ export function QuizSessionPage() {
     if (correct) {
       setMyScore((prev) => prev + 1);
     }
+
+    // Автоматический переход через 1.5 секунды
+    transitionRef.current = setTimeout(() => {
+      if (currentQuestionIndex < totalQuestions - 1) {
+        setCurrentQuestionIndex((i) => i + 1);
+        setSelectedAnswers([]);
+        setIsAnswered(false);
+        setIsTimerActive(true);
+        setTimeLeft(30);
+        setIsCorrect(null);
+      } else {
+        setShowResults(true);
+      }
+    }, 1500);
   };
 
   const goToNextQuestion = () => {
+    if (transitionRef.current) clearTimeout(transitionRef.current);
     if (currentQuestionIndex < totalQuestions - 1) {
       setCurrentQuestionIndex((i) => i + 1);
       setSelectedAnswers([]);
@@ -195,38 +217,43 @@ export function QuizSessionPage() {
       setIsTimerActive(true);
       setTimeLeft(30);
       setIsCorrect(null);
-      if (isOrganizer) {
-        setParticipants((prev) => prev.map((p) => ({ ...p, hasAnswered: false, isCorrect: undefined })));
-      }
     } else {
       setShowResults(true);
     }
   };
 
   const finishQuiz = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (transitionRef.current) clearTimeout(transitionRef.current);
     setShowResults(true);
   };
 
   // ── Timer effect ──
   useEffect(() => {
     if (!isTimerActive || isAnswered) return;
-    const timer = setTimeout(() => {
-      setTimeLeft((prev) => prev - 1);
+    timerRef.current = setTimeout(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          handleSubmit(true);
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
-    return () => clearTimeout(timer);
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, isTimerActive, isAnswered]);
 
-  // ── Timeout effect ──
+  // Очистка при размонтировании
   useEffect(() => {
-    if (timeLeft === 0 && !isAnswered) {
-      const timeoutId = setTimeout(() => {
-        setIsAnswered(true);
-        setIsTimerActive(false);
-        setIsCorrect(false);
-      }, 0);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [timeLeft, isAnswered]);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (transitionRef.current) clearTimeout(transitionRef.current);
+    };
+  }, []);
 
   // ── Render ──
   if (showResults) {
@@ -295,7 +322,7 @@ export function QuizSessionPage() {
                 <img src={currentQuestion.image} alt="Иллюстрация" className="rounded-xl max-h-48 w-auto object-contain mb-4" />
               )}
 
-              {/* Вопросы с множественным выбором — подсказка */}
+              {/* Подсказка для множественного выбора */}
               {currentQuestion.type === "multiple" && (
                 <p className="text-sm text-muted-foreground mb-3 flex items-center gap-2">
                   <span className="inline-block w-2 h-2 rounded-full bg-[#0d9488]" />
@@ -307,12 +334,15 @@ export function QuizSessionPage() {
                 {currentQuestion.options.map((opt) => {
                   const isSelected = selectedAnswers.includes(opt.id);
                   let isCorrectOption = false;
-                  if (isAnswered && currentQuestion.type === "single") {
+                  if (isAnswered && (currentQuestion.type === "single" || currentQuestion.type === "truefalse")) {
                     isCorrectOption = opt.id === currentQuestion.correctAnswer;
                   } else if (isAnswered && currentQuestion.type === "multiple") {
                     isCorrectOption = (currentQuestion.correctAnswer as string[]).includes(opt.id);
                   }
                   const isWrongSelected = isSelected && isAnswered && !isCorrectOption;
+
+                  // Для типа truefalse показываем только текст, без дополнительных индикаторов
+                  const isTrueFalse = currentQuestion.type === "truefalse";
 
                   return (
                     <button
@@ -330,21 +360,23 @@ export function QuizSessionPage() {
                       } disabled:cursor-not-allowed`}
                     >
                       {/* Визуальный индикатор */}
-                      <span className="flex-shrink-0">
-                        {currentQuestion.type === "multiple" ? (
-                          <span className={`w-5 h-5 border-2 rounded flex items-center justify-center transition-colors ${
-                            isSelected ? 'border-[#0d9488] bg-[#0d9488]' : 'border-gray-300'
-                          }`}>
-                            {isSelected && <CheckCircle2 className="w-4 h-4 text-white" />}
-                          </span>
-                        ) : (
-                          <span className={`w-5 h-5 border-2 rounded-full flex items-center justify-center transition-colors ${
-                            isSelected ? 'border-[#0d9488]' : 'border-gray-300'
-                          }`}>
-                            {isSelected && <span className="w-2.5 h-2.5 rounded-full bg-[#0d9488]" />}
-                          </span>
-                        )}
-                      </span>
+                      {!isTrueFalse && (
+                        <span className="flex-shrink-0">
+                          {currentQuestion.type === "multiple" ? (
+                            <span className={`w-5 h-5 border-2 rounded flex items-center justify-center transition-colors ${
+                              isSelected ? 'border-[#0d9488] bg-[#0d9488]' : 'border-gray-300'
+                            }`}>
+                              {isSelected && <CheckCircle2 className="w-4 h-4 text-white" />}
+                            </span>
+                          ) : (
+                            <span className={`w-5 h-5 border-2 rounded-full flex items-center justify-center transition-colors ${
+                              isSelected ? 'border-[#0d9488]' : 'border-gray-300'
+                            }`}>
+                              {isSelected && <span className="w-2.5 h-2.5 rounded-full bg-[#0d9488]" />}
+                            </span>
+                          )}
+                        </span>
+                      )}
                       <span className="text-sm text-foreground flex-1">{opt.text}</span>
                       {isAnswered && isCorrectOption && <CheckCircle2 className="w-4 h-4 text-green-500" />}
                       {isAnswered && isWrongSelected && <XCircle className="w-4 h-4 text-red-500" />}
@@ -366,7 +398,7 @@ export function QuizSessionPage() {
               <div className="flex justify-end mt-6 gap-3">
                 {!isAnswered && (
                   <button
-                    onClick={() => handleSubmitAnswer(false)}
+                    onClick={() => handleSubmit(false)}
                     disabled={selectedAnswers.length === 0}
                     className="px-6 py-2 rounded-xl text-sm font-medium text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ background: ACCENT }}
