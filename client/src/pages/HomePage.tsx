@@ -77,17 +77,6 @@ const CURRENT_USER = {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function Avatar() {
-  return (
-    <div
-      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
-      style={{ background: ACCENT }}
-    >
-      {CURRENT_USER.avatar}
-    </div>
-  );
-}
-
 function QuizCard({ quiz }: { quiz: Quiz }) {
   const isOwner = CURRENT_USER.role === "organizer" && quiz.author === CURRENT_USER.name;
   const color = CATEGORY_COLORS[quiz.category];
@@ -179,7 +168,11 @@ export function HomePage() {
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           {/* Logo */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <Link
+            to="/home"
+            className="flex items-center gap-2 flex-shrink-0 hover:opacity-80 transition"
+            aria-label="На главную"
+          >
             <div
               className="w-7 h-7 rounded-lg flex items-center justify-center"
               style={{ background: ACCENT }}
@@ -189,13 +182,14 @@ export function HomePage() {
             <span className="text-base font-semibold text-foreground tracking-tight hidden sm:block">
               QuizSpace
             </span>
-          </div>
+          </Link>
 
           {/* Right side */}
           <div className="flex items-center gap-3">
             {/* Create quiz — organizer only */}
             {CURRENT_USER.role === "organizer" && (
-              <button
+              <Link
+                to="/quiz/create"
                 className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-medium text-white transition-all duration-150 active:scale-[0.97]"
                 style={{ background: ACCENT }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = ACCENT_HOVER)}
@@ -203,16 +197,24 @@ export function HomePage() {
               >
                 <Plus className="w-4 h-4" />
                 Создать квиз
-              </button>
+              </Link>
             )}
 
-            {/* User */}
-            <div className="flex items-center gap-2">
-              <Avatar />
+            {/* Profile link */}
+            <Link
+              to="/profile"
+              className="flex items-center gap-2 hover:opacity-80 transition"
+            >
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
+                style={{ background: ACCENT }}
+              >
+                {CURRENT_USER.avatar}
+              </div>
               <span className="text-sm font-medium text-foreground hidden sm:block">
                 {CURRENT_USER.name}
               </span>
-            </div>
+            </Link>
 
             {/* Sign out */}
             <Link
@@ -349,13 +351,14 @@ export function HomePage() {
 
       {/* ── FAB: Create quiz (mobile, organizer only) ── */}
       {CURRENT_USER.role === "organizer" && (
-        <button
+        <Link
+          to="/quiz/create"
           className="sm:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full text-white shadow-[0_4px_20px_rgba(13,148,136,0.4)] flex items-center justify-center transition-all active:scale-95 z-20"
           style={{ background: ACCENT }}
           aria-label="Создать квиз"
         >
           <Plus className="w-6 h-6" />
-        </button>
+        </Link>
       )}
     </div>
   );

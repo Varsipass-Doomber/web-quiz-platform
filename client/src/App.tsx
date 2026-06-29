@@ -11,7 +11,7 @@ import { CreateQuizPage } from './pages/CreateQuizPage';
 import { LobbyPage } from './pages/LobbyPage';
 import { QuizSessionPage } from './pages/QuizSessionPage';
 import { ProfilePage } from './pages/ProfilePage';
-
+import { ResultsPage } from './pages/ResultsPage';
 
 function App() {
   // Используем useRef для хранения socket
@@ -56,14 +56,11 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/home" element={<HomePage />} />
         <Route path="/quiz/create" element={<CreateQuizPage />} />
+        <Route path="/quiz/edit/:quizId" element={<CreateQuizPage />} />
         <Route path="/quiz/lobby" element={<LobbyPage />} />
         <Route path="/quiz/session/:quizId" element={<QuizSessionPage />} />
         <Route path="/profile" element={<ProfilePage />} />
-        {/* Добавим позже: 
-        <Route path="/quiz/:id" element={<QuizSession />} />
-        <Route path="/results/:id" element={<Results />} />
-        <Route path="/profile" element={<Profile />} />
-        */}
+        <Route path="/quiz/results/:quizId" element={<ResultsPage />} />
       </Routes>
     </Router>
   );

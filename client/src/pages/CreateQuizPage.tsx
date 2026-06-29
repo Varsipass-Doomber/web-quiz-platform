@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { Link, useParams } from "react-router-dom";
 import {
   Zap,
   ArrowLeft,
@@ -318,6 +318,10 @@ function QuestionModal({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function CreateQuizPage() {
+  const { quizId } = useParams<{ quizId: string }>();
+  const [isLoading, setIsLoading] = useState(false);
+  const isEditMode = !!quizId; // вычисляем режим без отдельного состояния
+
   const [form, setForm] = useState<QuizForm>({
     title: "",
     description: "",
@@ -331,6 +335,66 @@ export function CreateQuizPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [published, setPublished] = useState(false);
+
+  // ── Загрузка квиза ──
+  const loadQuiz = useCallback(async (id: string) => {
+    setIsLoading(true);
+    try {
+      console.log(`Загружаем квиз с ID: ${id}`); // используем id
+      // TODO: заменить на реальный запрос к серверу
+      const mockQuiz = {
+        title: "Тестовый квиз",
+        description: "Описание тестового квиза",
+        category: "Наука",
+        timePerQuestion: 30,
+        isPublic: true,
+        maxParticipants: 10,
+        questions: [
+          {
+            id: "q1",
+            text: "Первый вопрос?",
+            type: "single" as QuestionType,
+            answers: [
+              { id: "a", text: "Ответ 1", correct: true },
+              { id: "b", text: "Ответ 2", correct: false },
+            ],
+          },
+          {
+            id: "q2",
+            text: "Второй вопрос?",
+            type: "multiple" as QuestionType,
+            answers: [
+              { id: "c", text: "Вариант 1", correct: true },
+              { id: "d", text: "Вариант 2", correct: true },
+              { id: "e", text: "Вариант 3", correct: false },
+            ],
+          },
+        ],
+      };
+
+      setForm({
+        title: mockQuiz.title,
+        description: mockQuiz.description,
+        category: mockQuiz.category,
+        timePerQuestion: mockQuiz.timePerQuestion,
+        isPublic: mockQuiz.isPublic,
+        maxParticipants: mockQuiz.maxParticipants,
+      });
+      setQuestions(mockQuiz.questions);
+    } catch (error) {
+      console.error("Ошибка загрузки квиза:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // ── Эффект для загрузки при монтировании ──
+  useEffect(() => {
+    if (quizId) {
+      loadQuiz(quizId);
+    }
+    // Если quizId нет, ничего не делаем — форма пустая
+  }, [quizId, loadQuiz]);
 
   const setField = <K extends keyof QuizForm>(key: K, val: QuizForm[K]) => {
     setForm((f) => ({ ...f, [key]: val }));
@@ -351,6 +415,14 @@ export function CreateQuizPage() {
     const errs = validateForm();
     setFormErrors(errs);
     if (Object.keys(errs).length) return;
+
+    if (isEditMode) {
+      console.log("Обновляем квиз с ID:", quizId);
+      // TODO: PUT /api/quizzes/:quizId
+    } else {
+      console.log("Создаём новый квиз");
+      // TODO: POST /api/quizzes
+    }
     setPublished(true);
   };
 
@@ -380,6 +452,21 @@ export function CreateQuizPage() {
   const deleteQuestion = (id: string) =>
     setQuestions((prev) => prev.filter((q) => q.id !== id));
 
+  // ── Индикатор загрузки ──
+  if (isLoading) {
+    return (
+      <div
+        className="min-h-screen bg-background flex items-center justify-center"
+        style={{ fontFamily: "'Inter', sans-serif" }}
+      >
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-t-[#0d9488] border-gray-200 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">Загрузка квиза...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (published) {
     return (
       <div
@@ -394,7 +481,7 @@ export function CreateQuizPage() {
             <CheckCircle2 className="w-7 h-7" style={{ color: ACCENT }} />
           </div>
           <h2 className="text-xl font-semibold text-card-foreground mb-2">
-            Квиз опубликован!
+            {isEditMode ? "Квиз обновлён!" : "Квиз опубликован!"}
           </h2>
           <p className="text-sm text-muted-foreground mb-1">
             <span className="font-medium text-card-foreground">{form.title}</span>
@@ -430,6 +517,7 @@ export function CreateQuizPage() {
       {/* ── Header ── */}
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+          {/* Левая часть */}
           <div className="flex items-center gap-3">
             <Link
               to="/home"
@@ -450,30 +538,31 @@ export function CreateQuizPage() {
             </div>
             <span className="text-muted-foreground text-sm hidden sm:block">/</span>
             <span className="text-sm font-medium text-foreground hidden sm:block">
-              Создание квиза
+              {isEditMode ? "Редактирование квиза" : "Создание квиза"}
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Правая часть — кнопки */}
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               type="button"
               onClick={() => {
                 const errs = validateForm();
                 setFormErrors(errs);
               }}
-              className="px-4 py-2 rounded-xl text-sm font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition"
+              className="px-4 py-1.5 rounded-xl text-sm font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition whitespace-nowrap"
             >
               Сохранить черновик
             </button>
             <button
               type="button"
               onClick={handlePublish}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-white transition-all active:scale-[0.97]"
+              className="px-4 py-1.5 rounded-xl text-sm font-medium text-white transition-all active:scale-[0.97] whitespace-nowrap"
               style={{ background: ACCENT, boxShadow: "0 2px 10px rgba(13,148,136,0.3)" }}
               onMouseEnter={(e) => (e.currentTarget.style.background = ACCENT_HOVER)}
               onMouseLeave={(e) => (e.currentTarget.style.background = ACCENT)}
             >
-              Опубликовать
+              {isEditMode ? "Сохранить изменения" : "Опубликовать"}
             </button>
           </div>
         </div>
@@ -482,7 +571,7 @@ export function CreateQuizPage() {
       {/* ── Main ── */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-5">
         <h1 className="text-2xl font-semibold text-foreground">
-          Создание нового квиза
+          {isEditMode ? "Редактирование квиза" : "Создание нового квиза"}
         </h1>
 
         {/* ── General settings card ── */}
@@ -748,7 +837,7 @@ export function CreateQuizPage() {
             onMouseEnter={(e) => (e.currentTarget.style.background = ACCENT_HOVER)}
             onMouseLeave={(e) => (e.currentTarget.style.background = ACCENT)}
           >
-            Опубликовать квиз
+            {isEditMode ? "Сохранить изменения" : "Опубликовать квиз"}
           </button>
         </div>
       </main>
